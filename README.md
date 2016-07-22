@@ -2,8 +2,8 @@
 ## A geofencing sample app I created , does not use Google's built-in Geofencing API.
 
 #Features:
-## Geofences persist outside applications state
-## Geofence tracking continues even after you reset the phone
+## Geofences persist outside application's state
+## Geofence tracking continues even after you reset the phone or put the app in the background
 ## Can add/remove multiple geofences
 ## Custom name and radius for geofences
 
