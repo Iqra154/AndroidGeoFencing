@@ -1,5 +1,7 @@
 package com.emerson.omerrules.androidgeofencing;
 
+import android.util.Log;
+
 import com.google.android.gms.maps.model.LatLng;
 
 import java.io.IOException;
@@ -8,6 +10,10 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 public class GeoFence extends GeoLocation implements Serializable{
+
+    private static final long serialVersionUID = -2518143671167959230L;
+
+    public static final String TAG = GeoFence.class.getSimpleName();
 
     private Listener mListener;
     private long mRadius;
@@ -61,6 +67,7 @@ public class GeoFence extends GeoLocation implements Serializable{
     }
 
     private void writeObject(ObjectOutputStream oos) throws IOException {
+        Log.d(TAG,"WRITING!");
         oos.defaultWriteObject();
         oos.writeDouble(getLat());
         oos.writeDouble(getLon());
@@ -70,6 +77,7 @@ public class GeoFence extends GeoLocation implements Serializable{
 
     private void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
         // default deserialization
+        Log.d(TAG,"READING!");
         ois.defaultReadObject();
         double lat = ois.readDouble();
         double lon = ois.readDouble();

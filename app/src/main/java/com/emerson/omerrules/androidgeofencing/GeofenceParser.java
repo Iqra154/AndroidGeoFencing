@@ -1,6 +1,8 @@
 package com.emerson.omerrules.androidgeofencing;
 
+import android.content.Context;
 import android.os.Environment;
+import android.util.Log;
 
 
 import java.io.File;
@@ -18,22 +20,25 @@ import java.util.Map;
 
 public class GeofenceParser implements Serializable {
 
+    private static final long serialVersionUID = -2518143671167959330L;
+
     public static final String TAG = GeofenceParser.class.getSimpleName();
 
     private static String storagePath;
+    private static String name = GeofenceParser.class.getSimpleName();
 
     private static GeofenceParser sInstance;
 
     private static boolean isInitialized = false;
 
-    public static void initialize(GeoLocation geoLocation){
+    public static void initialize(Context context, GeoLocation geoLocation){
         sInstance = new GeofenceParser(geoLocation);
-        storagePath = Environment.getExternalStorageDirectory().getAbsolutePath()+"\\GeoFenceParser\\data.txt";
-        File file = new File(storagePath);
+        storagePath = context.getFilesDir().getAbsolutePath();
+        File file = new File(storagePath,name);
         if(file.exists()){
             FileInputStream fin = null;
             try {
-                fin = new FileInputStream(storagePath);
+                fin = new FileInputStream(file);
                 ObjectInputStream ois = new ObjectInputStream(fin);
                 sInstance = (GeofenceParser) ois.readObject();
 
@@ -50,6 +55,7 @@ public class GeofenceParser implements Serializable {
         }
 
         isInitialized = true;
+        Log.d(TAG,"Initialized!");
     }
 
     public static GeofenceParser getInstance(){
@@ -63,12 +69,16 @@ public class GeofenceParser implements Serializable {
 
     private Map<GeoFence,Boolean> geoFences;
 
+    public GeofenceParser(){
+        geoFences = new HashMap<>();
+    }
+
     private GeofenceParser(GeoLocation geoLocation){
         geoFences = new HashMap<>();
     }
 
     public void loadGeoFences(Map<GeoFence,Boolean> geoFences){
-        geoFences.putAll(geoFences);
+        geoFences.putAll(this.geoFences);
     }
 
     public void removeGeoFence(GeoFence geoFence){
@@ -81,9 +91,10 @@ public class GeofenceParser implements Serializable {
 
 
     public void saveState(){
+        Log.d(TAG,"SAVED!");
         FileOutputStream fout = null;
         try {
-            fout = new FileOutputStream(storagePath);
+            fout = new FileOutputStream(new File(storagePath,name));
             ObjectOutputStream oos = new ObjectOutputStream(fout);
             oos.writeObject(this);
         } catch (FileNotFoundException e) {
@@ -91,5 +102,6 @@ public class GeofenceParser implements Serializable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
 }

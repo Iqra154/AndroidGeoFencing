@@ -15,7 +15,6 @@ import android.util.Log;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
-import com.google.android.gms.location.Geofence;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -31,6 +30,9 @@ import java.util.Map;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,GoogleMap.OnMapClickListener, GoogleMap.OnMarkerClickListener{
 
+
+    private static final String TAG = MapsActivity.class.getSimpleName();
+
     private GoogleMap mMap;
 
     private long radiusInput = 0L;
@@ -41,7 +43,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Map<Marker,GeoFence> markerToGeoFenceMap;
     private Map<GeoFence,Boolean> geoFences;
 
-    private GeofenceParser geofenceParser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,20 +61,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     protected void onResume() {
-        super.onResume();
         LocalBroadcastManager.getInstance(this).registerReceiver(getLocationListener(),new IntentFilter("geoservices"));
+        super.onResume();
     }
 
     @Override
     protected void onPause() {
-        super.onPause();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(getLocationListener());
+        GeofenceParser.getInstance().saveState();
+        super.onPause();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        geofenceParser.saveState();
+
     }
 
     private BroadcastReceiver getLocationListener(){
@@ -100,16 +102,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onReceiveLocationUpdate(GeoLocation geoPoint) {
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(geoPoint.getLatLng(),12));
         if(!GeofenceParser.isIsInitialized()){
-            GeofenceParser.initialize(geoPoint);
-            geofenceParser = GeofenceParser.getInstance();
-            geofenceParser.loadGeoFences(geoFences);
+            GeofenceParser.initialize(this,geoPoint);
+            GeofenceParser.getInstance().loadGeoFences(geoFences);
 
             for(GeoFence geoFence: geoFences.keySet()){
                 addFence(geoFence);
+                Log.d(TAG,"LOADING FILE FENCES");
             }
 
         }
-        Log.d("GOOGLE MAPS","location received");
+        Log.d(TAG,"location received");
     }
 
     @Override
@@ -156,7 +158,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private void addFence(GeoFence geofence){
         Circle circle = mMap.addCircle(new CircleOptions()
                 .center(geofence.getLatLng())
-                .radius(radiusInput)
+                .radius(geofence.getRadius())
                 .strokeColor(Color.RED)
                 .fillColor(Color.TRANSPARENT));
 

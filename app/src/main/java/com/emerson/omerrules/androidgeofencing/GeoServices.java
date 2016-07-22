@@ -31,6 +31,8 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
     private static GeoServices sGeoServices;
     private static Context sContext;
 
+    private static final String TAG = GeoServices.class.getSimpleName();
+
     public static void initialize(Context context) {
         sContext = context;
     }
@@ -47,6 +49,8 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
         sGeoServices = this;
 
         this.geoFences = new HashMap<>();
+
+
 
 
         if (mGoogleApiClient == null) {
@@ -92,6 +96,7 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
         if (location == null) {
             return;
         }
+
         Log.d("GEOSERVICES","Changed Location");
         processLocation(location);
     }
@@ -123,6 +128,13 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
     private void processLocation(Location location){
         GeoLocation geoLocation = new GeoLocation(location.getLatitude(),location.getLongitude());
         mostRecentPoint = geoLocation;
+
+        /*
+        if(!GeofenceParser.isIsInitialized()){
+            GeofenceParser.initialize(this,mostRecentPoint);
+            GeofenceParser.getInstance().loadGeoFences(geoFences);
+            Log.d(TAG,"Initialized from the service");
+        }*/
 
         for(GeoFence geoFence:geoFences.keySet()){
             boolean isWithin  = geoFence.isWithin(mostRecentPoint);
