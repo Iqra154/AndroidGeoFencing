@@ -40,4 +40,14 @@ public class GeoFence extends GeoLocation{
         int EVENT_EXIT  = 1;
         public void eventOccured(int event);
     }
+
+    public boolean isWithin(GeoLocation geoLocation){
+        return this.distanceTo(geoLocation)<this.getRadius();
+    }
+
+    @Override
+    public int hashCode() {
+        return mName.hashCode();
+    }
+
 }
