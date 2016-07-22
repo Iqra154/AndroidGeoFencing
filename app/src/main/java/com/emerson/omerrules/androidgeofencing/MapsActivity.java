@@ -62,6 +62,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onResume() {
         LocalBroadcastManager.getInstance(this).registerReceiver(getLocationListener(),new IntentFilter("geoservices"));
+
         super.onResume();
     }
 
@@ -97,6 +98,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMarkerClickListener(this);
         mMap.setOnMapClickListener(this);
         mMap.setMyLocationEnabled(true);
+
+
+        if(GeofenceParser.getInstance()!=null){
+
+
+
+            GeofenceParser.getInstance().loadGeoFences(geoFences);
+
+            for(GeoFence geoFence: geoFences.keySet()){
+                addFence(geoFence);
+                Log.d(TAG,"LOADING FILE FENCES");
+            }
+        }
     }
 
     public void onReceiveLocationUpdate(GeoLocation geoPoint) {
