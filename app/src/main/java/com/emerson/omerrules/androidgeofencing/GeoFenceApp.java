@@ -6,7 +6,6 @@ public class GeoFenceApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-
         GeoServices.initialize(this);
     }
 }

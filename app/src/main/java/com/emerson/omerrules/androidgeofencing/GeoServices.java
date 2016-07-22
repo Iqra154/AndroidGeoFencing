@@ -70,8 +70,6 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
 
     private GeoLocation mostRecentPoint;
 
-    private boolean running = false;
-
 
     private Map<GeoFence,Boolean> geoFences;
 
@@ -81,13 +79,11 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
 
     public void start() {
         mGoogleApiClient.connect();
-        running = true;
     }
 
 
     public void stop() {
         mGoogleApiClient.disconnect();
-        running = false;
     }
 
 
@@ -107,7 +103,6 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
     @Override
     public void onConnected(Bundle bundle) {
         requestLocationServices();
-        running = true;
         Log.d("GeoServices:", "Connection success");
     }
 
@@ -152,7 +147,6 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
 
     @Override
     public void onConnectionSuspended(int i) {
-        running = false;
         Log.d("GeoServices:", "Connection suspended");
     }
 
@@ -160,7 +154,6 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
         Log.d("GeoServices:", "Connection failed");
-        running = false;
         start();
     }
 
@@ -182,6 +175,7 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
         boolean inOrOut = geoFence.isWithin(mostRecentPoint);
         Log.d("GEOSERVICES",inOrOut?"in":"out");
         geoFences.put(geoFence,inOrOut);
+        GeofenceParser.getInstance().storeGeoFence(geoFence,inOrOut);
     }
 
     public void removeGeoFence(GeoFence geoFence){

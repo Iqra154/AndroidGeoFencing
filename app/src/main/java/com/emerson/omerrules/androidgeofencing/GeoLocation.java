@@ -4,9 +4,13 @@ import android.location.Location;
 
 import com.google.android.gms.maps.model.LatLng;
 
-public class GeoLocation {
+import java.io.Serializable;
 
-    private LatLng latLng;
+public class GeoLocation{
+
+    protected LatLng latLng;
+
+    public GeoLocation(){}
 
     public GeoLocation(LatLng latLng){
         this.latLng = latLng;
@@ -25,5 +29,7 @@ public class GeoLocation {
         Location.distanceBetween(this.latLng.latitude,this.latLng.longitude,geoLocation.getLat(),geoLocation.getLon(),results);
         return results[0];
     }
+
+
 
 }

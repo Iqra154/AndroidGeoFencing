@@ -2,18 +2,22 @@ package com.emerson.omerrules.androidgeofencing;
 
 import com.google.android.gms.maps.model.LatLng;
 
-public class GeoFence extends GeoLocation{
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+
+public class GeoFence extends GeoLocation implements Serializable{
 
     private Listener mListener;
-
-    private GeoLocation mCenter;
     private long mRadius;
     private String mName;
 
 
+    public GeoFence(){}
+
     public GeoFence(String name,LatLng center,long radius){
         super(center);
-        this.mCenter = new GeoLocation(center);
         this.mRadius = radius;
         this.mName = name;
     }
@@ -46,8 +50,34 @@ public class GeoFence extends GeoLocation{
     }
 
     @Override
+    public boolean equals(Object o) {
+        if(! (o instanceof GeoFence)){return  false;}
+        return this.getName().equals(((GeoFence)o).getName());
+    }
+
+    @Override
     public int hashCode() {
         return mName.hashCode();
     }
+
+    private void writeObject(ObjectOutputStream oos) throws IOException {
+        oos.defaultWriteObject();
+        oos.writeDouble(getLat());
+        oos.writeDouble(getLon());
+        oos.writeLong(mRadius);
+        oos.writeObject(mName);
+    }
+
+    private void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
+        // default deserialization
+        ois.defaultReadObject();
+        double lat = ois.readDouble();
+        double lon = ois.readDouble();
+        latLng = new LatLng(lat,lon);
+        mRadius = ois.readLong();
+        mName   = (String)ois.readObject();
+
+    }
+
 
 }

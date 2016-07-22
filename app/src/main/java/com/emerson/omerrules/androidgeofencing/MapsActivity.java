@@ -6,17 +6,16 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
-import android.location.Location;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AlertDialog;
 import android.text.InputType;
 import android.util.Log;
-import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
+import com.google.android.gms.location.Geofence;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -28,8 +27,8 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,GoogleMap.OnMapClickListener, GoogleMap.OnMarkerClickListener{
 
     private GoogleMap mMap;
@@ -40,6 +39,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private BroadcastReceiver locationListener;
     private Map<Marker,Circle> markerToCircleMap;
     private Map<Marker,GeoFence> markerToGeoFenceMap;
+    private Map<GeoFence,Boolean> geoFences;
+
+    private GeofenceParser geofenceParser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +53,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mapFragment.getMapAsync(this);
         GeoServices.startAsService();
 
+        geoFences = new HashMap<>();
         markerToCircleMap = new HashMap<>();
         markerToGeoFenceMap = new HashMap<>();
     }
@@ -67,6 +70,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         LocalBroadcastManager.getInstance(this).unregisterReceiver(getLocationListener());
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        geofenceParser.saveState();
+    }
+
     private BroadcastReceiver getLocationListener(){
         if(locationListener == null){
             locationListener = new BroadcastReceiver() {
@@ -79,7 +88,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         return locationListener;
     }
-
+    
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -90,6 +99,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void onReceiveLocationUpdate(GeoLocation geoPoint) {
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(geoPoint.getLatLng(),12));
+        if(!GeofenceParser.isIsInitialized()){
+            GeofenceParser.initialize(geoPoint);
+            geofenceParser = GeofenceParser.getInstance();
+            geofenceParser.loadGeoFences(geoFences);
+
+            for(GeoFence geoFence: geoFences.keySet()){
+                addFence(geoFence);
+            }
+
+        }
         Log.d("GOOGLE MAPS","location received");
     }
 
@@ -132,6 +151,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         });
 
         builder.show();
+    }
+
+    private void addFence(GeoFence geofence){
+        Circle circle = mMap.addCircle(new CircleOptions()
+                .center(geofence.getLatLng())
+                .radius(radiusInput)
+                .strokeColor(Color.RED)
+                .fillColor(Color.TRANSPARENT));
+
+
+        Marker marker = mMap.addMarker(new MarkerOptions().position(geofence.getLatLng()).title(geofence.getName()));
+
+        markerToCircleMap.put(marker,circle);
+        markerToGeoFenceMap.put(marker,geofence);
     }
 
     private void addFence(LatLng latLng){
