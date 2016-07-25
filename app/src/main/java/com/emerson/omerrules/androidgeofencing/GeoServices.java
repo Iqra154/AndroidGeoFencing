@@ -1,6 +1,8 @@
 package com.emerson.omerrules.androidgeofencing;
 
 import android.Manifest;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -9,6 +11,7 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -42,13 +45,11 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
     }
 
 
-
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d("GEOSERVICES","Started");
         sGeoServices = this;
 
-        this.geoFences = new HashMap<>();
 
 
 
@@ -96,6 +97,11 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
         if (location == null) {
             return;
         }
+        if(geoFences ==null && GeofenceParser.getInstance() !=null){
+            geoFences = new HashMap<>();
+            GeofenceParser.getInstance().loadGeoFences(geoFences);
+        }
+
 
         Log.d("GEOSERVICES","Changed Location");
         processLocation(location);
@@ -118,7 +124,10 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
         locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         locationRequest.setSmallestDisplacement(1f);
         LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, locationRequest, this);
-        processLocation(LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient));
+
+        if(LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient) !=null){
+            processLocation(LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient));
+        }
         return true;
     }
 
@@ -129,24 +138,23 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
         GeoLocation geoLocation = new GeoLocation(location.getLatitude(),location.getLongitude());
         mostRecentPoint = geoLocation;
 
-        /*
-        if(!GeofenceParser.isIsInitialized()){
-            GeofenceParser.initialize(this,mostRecentPoint);
-            GeofenceParser.getInstance().loadGeoFences(geoFences);
-            Log.d(TAG,"Initialized from the service");
-        }*/
 
-        for(GeoFence geoFence:geoFences.keySet()){
-            boolean isWithin  = geoFence.isWithin(mostRecentPoint);
-            boolean pastState = geoFences.get(geoFence);
-            if(pastState == true && isWithin == false){
-                NotificationHandler.getInstance().initialize(this,NotificationHandler.EXIT,geoFence);
+        if(geoFences!=null){
+            Log.d(TAG,"GeoFence Count:" + Integer.toString(geoFences.size()));
+            for(GeoFence geoFence:geoFences.keySet()){
+                boolean isWithin  = geoFence.isWithin(mostRecentPoint);
+                boolean pastState = geoFences.get(geoFence);
+                if(pastState == true && isWithin == false){
+                    NotificationHandler.getInstance().initialize(this,NotificationHandler.EXIT,geoFence);
+                }
+                if(pastState == false && isWithin == true){
+                    NotificationHandler.getInstance().initialize(this,NotificationHandler.ENTER,geoFence);
+                }
+                geoFences.put(geoFence,isWithin);
             }
-            if(pastState == false && isWithin == true){
-                NotificationHandler.getInstance().initialize(this,NotificationHandler.ENTER,geoFence);
-            }
-
         }
+
+
 
 
         Intent dataIntent = new Intent("geoservices");
@@ -185,6 +193,7 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
 
     public void addGeoFence(GeoFence geoFence){
         boolean inOrOut = geoFence.isWithin(mostRecentPoint);
+
         Log.d("GEOSERVICES",inOrOut?"in":"out");
         geoFences.put(geoFence,inOrOut);
         GeofenceParser.getInstance().storeGeoFence(geoFence,inOrOut);
@@ -198,6 +207,22 @@ public class GeoServices extends Service implements LocationListener, GoogleApiC
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent){
+        Intent restartServiceIntent = new Intent(getApplicationContext(), this.getClass());
+        restartServiceIntent.setPackage(getPackageName());
+
+        PendingIntent restartServicePendingIntent = PendingIntent.getService(getApplicationContext(), 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT);
+        AlarmManager alarmService = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
+        alarmService.set(
+                AlarmManager.ELAPSED_REALTIME,
+                SystemClock.elapsedRealtime() + 1000,
+                restartServicePendingIntent);
+
+        Log.d(TAG,"RESTARTING SERVICE");
+        super.onTaskRemoved(rootIntent);
     }
 
 }

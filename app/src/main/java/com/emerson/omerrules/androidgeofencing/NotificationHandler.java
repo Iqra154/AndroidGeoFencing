@@ -6,14 +6,21 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.support.v7.app.NotificationCompat;
+import android.util.Log;
 
 import java.util.Stack;
 
 public class NotificationHandler {
 
-    private static NotificationHandler sNotificationHandler = new NotificationHandler();
+    private static final String TAG = NotificationHandler.class.getSimpleName();
 
-    public static NotificationHandler getInstance(){return sNotificationHandler;}
+    private static NotificationHandler sNotificationHandler;
+
+    public static NotificationHandler getInstance(){
+        if(sNotificationHandler == null){
+            sNotificationHandler = new NotificationHandler();
+        }
+        return sNotificationHandler;}
 
     private Stack<String> historyStack;
 
@@ -29,7 +36,7 @@ public class NotificationHandler {
 
     public void initialize(Context context,String action,GeoFence geoFence){
         historyStack.push(createMessage(action,geoFence.getName()));
-
+        Log.d(TAG,action);
 
         Intent intent = new Intent(context,MapsActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP); //No need to create back stack since there is only 1 activity running at all times.
@@ -38,8 +45,9 @@ public class NotificationHandler {
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context);
         Notification notification = mBuilder
                 .setContentIntent(pendingIntent)
-                .setContentTitle("GeoFence Update")
+                .setContentTitle(action)
                 .setContentText(historyStack.peek())
+                .setSmallIcon(R.drawable.common_google_signin_btn_icon_dark)
                 .setAutoCancel(false)
                 .build();
 

@@ -52,6 +52,7 @@ public class GeoFence extends GeoLocation implements Serializable{
     }
 
     public boolean isWithin(GeoLocation geoLocation){
+        if(geoLocation==null){return true;}
         return this.distanceTo(geoLocation)<this.getRadius();
     }
 
