@@ -1,6 +1,6 @@
 package com.emerson.omerrules.androidgeofencing;
 
-import android.app.Dialog;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
@@ -17,8 +19,14 @@ import android.text.InputType;
 import android.util.Log;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingRequest;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -28,16 +36,19 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnMarkerClickListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnMarkerClickListener,GoogleApiClient.ConnectionCallbacks,GoogleApiClient.OnConnectionFailedListener {
 
 
     private static final String TAG = MapsActivity.class.getSimpleName();
 
     private static final int PERMISSION_LOCATION_REQUEST_CODE = 1;
 
+    private GoogleApiClient mGoogleApiClient;
     private GoogleMap mMap;
 
 
@@ -47,7 +58,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private BroadcastReceiver locationListener;
     private Map<Marker, Circle> markerToCircleMap;
     private Map<Marker, GeoFence> markerToGeoFenceMap;
-    private Map<GeoFence, Boolean> geoFences;
+    private List<GeoFence> geoFences;
     private boolean hasPermissions = false;
 
 
@@ -55,24 +66,37 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+
+
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-        GeoServices.startAsService();
 
-        geoFences = new HashMap<>();
+        geoFences = new ArrayList<>();
         markerToCircleMap = new HashMap<>();
         markerToGeoFenceMap = new HashMap<>();
 
-        if (!hasLocationPermissions()) {
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION, android.Manifest.permission.ACCESS_FINE_LOCATION},
-                    PERMISSION_LOCATION_REQUEST_CODE);
-        }else{
-            hasPermissions = true;
+        if(ApplicationManager.getInstance().get().isMarshmallow()) {
+            if (!hasLocationPermissions()) {
+                ActivityCompat.requestPermissions(
+                        this,
+                        new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
+                        PERMISSION_LOCATION_REQUEST_CODE);
+            } else {
+                hasPermissions = true;
+            }
         }
+
+        if(mGoogleApiClient==null){
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(LocationServices.API)
+                    .build();
+        }
+
+        mGoogleApiClient.connect();
+
 
     }
 
@@ -84,22 +108,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onResume() {
         LocalBroadcastManager.getInstance(this).registerReceiver(getLocationListener(), new IntentFilter("geoservices"));
-
+        if(GeoFenceParser.isIsInitialized()){
+            geoFences.clear();
+            GeoFenceParser.getInstance().loadGeoFences(geoFences);
+        }
         super.onResume();
     }
 
     @Override
     protected void onPause() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(getLocationListener());
-        if(GeofenceParser.isIsInitialized())
-        {GeofenceParser.getInstance().saveState();}
         super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if(GeoFenceParser.isIsInitialized()){GeoFenceParser.getInstance().saveState();}
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
+        if(GeoFenceParser.isIsInitialized()){GeoFenceParser.getInstance().saveState();}
     }
 
     @Override
@@ -107,19 +138,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap = googleMap;
         mMap.setOnMarkerClickListener(this);
         mMap.setOnMapClickListener(this);
+        mMap.setMyLocationEnabled(true);
         if(hasPermissions){
             mMap.setMyLocationEnabled(true);
         }
 
-        if(GeofenceParser.getInstance()!=null){
+        if(!GeoFenceParser.isIsInitialized()){GeoFenceParser.initialize(this);}
+            GeoFenceParser.getInstance().loadGeoFences(geoFences);
 
-            GeofenceParser.getInstance().loadGeoFences(geoFences);
-
-            for(GeoFence geoFence: geoFences.keySet()){
+            Log.d(TAG,"Loading fences from file...");
+            for(GeoFence geoFence: geoFences){
                 addFence(geoFence);
-                Log.d(TAG,"LOADING FILE FENCES");
             }
-        }
+            Log.d(TAG,"Fences fully loaded!");
+
     }
 
      private BroadcastReceiver getLocationListener(){
@@ -127,28 +159,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             locationListener = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    GeoLocation geoLocation = new GeoLocation(intent.getDoubleExtra("lat",0),intent.getDoubleExtra("lon",0));
-                    onReceiveLocationUpdate(geoLocation);
+                    Toast.makeText(context,intent.getStringExtra("message"),Toast.LENGTH_LONG).show();
                }
             };
         }
         return locationListener;
     }
-
-
-     public void onReceiveLocationUpdate(GeoLocation geoPoint) {
-         if(!GeofenceParser.isIsInitialized()){
-             GeofenceParser.initialize(this,geoPoint);
-             GeofenceParser.getInstance().loadGeoFences(geoFences);
-
-             for(GeoFence geoFence: geoFences.keySet()){
-                 addFence(geoFence);
-                 Log.d(TAG,"LOADING FILE FENCES");
-             }
-
-         }
-         Log.d(TAG,"location received");
-     }
 
      @Override
      public void onMapClick(final LatLng latLng) {
@@ -211,7 +227,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private void addFence(LatLng latLng){
         if(radiusInput==0L){return;}
         GeoFence geoFence = new GeoFence(nameInput,latLng,radiusInput);
-        GeoServices.getInstance().addGeoFence(geoFence);
 
         Circle circle = mMap.addCircle(new CircleOptions()
                 .center(latLng)
@@ -225,6 +240,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markerToCircleMap.put(marker,circle);
         markerToGeoFenceMap.put(marker,geoFence);
 
+        GeoFenceParser.getInstance().storeGeoFence(geoFence);
+
+        Geofence googleGeofence = new Geofence.Builder()
+                .setRequestId(geoFence.getName())
+                .setCircularRegion(
+                        geoFence.getLat(),
+                        geoFence.getLon(),
+                        geoFence.getRadius()
+                )
+                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
+                .build();
+
+        List<Geofence> googleGeofences = new ArrayList<>();
+
+        googleGeofences.add(googleGeofence);
+        LocationServices.GeofencingApi.addGeofences(mGoogleApiClient, getGeofencingRequest(googleGeofences), getGeofencePendingIntent());
+
     }
 
     @Override
@@ -237,8 +270,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onClick(DialogInterface dialog, int which) {
                 GeoFence geoFence = markerToGeoFenceMap.get(marker);
                 Circle   circle   = markerToCircleMap.get(marker);
-                GeoServices.getInstance().removeGeoFence(geoFence);
-                GeofenceParser.getInstance().removeGeoFence(geoFence);
+                GeoFenceParser.getInstance().removeGeoFence(geoFence);
                 marker.remove();
                 circle.remove();
                 dialog.dismiss();
@@ -260,15 +292,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
 
 
         switch (requestCode) {
             case PERMISSION_LOCATION_REQUEST_CODE: {
                 // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if ((grantResults.length > 0) && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
                     mMap.setMyLocationEnabled(true);
                     hasPermissions = true;
                 } else {
@@ -277,11 +307,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 }
                 return;
             }
-
-            // other 'case' lines to check for other
-            // permissions this app might request
         }
     }
 
 
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+    }
+
+    private GeofencingRequest getGeofencingRequest(List<Geofence> googleFences) {
+        GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
+        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER);
+        builder.addGeofences(googleFences);
+        return builder.build();
+    }
+
+    private PendingIntent getGeofencePendingIntent() {
+        Intent intent = new Intent(this, GeoFenceTransitionService.class);
+        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+    }
 }

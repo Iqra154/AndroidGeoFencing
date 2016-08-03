@@ -1,7 +1,6 @@
 package com.emerson.omerrules.androidgeofencing;
 
 import android.content.Context;
-import android.os.Environment;
 import android.util.Log;
 
 
@@ -15,24 +14,24 @@ import java.io.ObjectOutputStream;
 import java.io.OptionalDataException;
 import java.io.Serializable;
 import java.io.StreamCorruptedException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
-public class GeofenceParser implements Serializable {
+public class GeoFenceParser implements Serializable {
 
     private static final long serialVersionUID = -2518143671167959330L;
 
-    public static final String TAG = GeofenceParser.class.getSimpleName();
+    public static final String TAG = GeoFenceParser.class.getSimpleName();
 
     private static String storagePath;
-    private static String name = GeofenceParser.class.getSimpleName();
+    private static String name = GeoFenceParser.class.getSimpleName();
 
-    private static GeofenceParser sInstance;
+    private static GeoFenceParser sInstance;
 
     private static boolean isInitialized = false;
 
-    public static void initialize(Context context, GeoLocation geoLocation){
-        sInstance = new GeofenceParser(geoLocation);
+    public static void initialize(Context context){
+        sInstance = new GeoFenceParser();
         storagePath = context.getFilesDir().getAbsolutePath();
         File file = new File(storagePath,name);
         if(file.exists()){
@@ -40,17 +39,10 @@ public class GeofenceParser implements Serializable {
             try {
                 fin = new FileInputStream(file);
                 ObjectInputStream ois = new ObjectInputStream(fin);
-                sInstance = (GeofenceParser) ois.readObject();
+                sInstance = (GeoFenceParser) ois.readObject();
 
-            } catch (FileNotFoundException e) {e.printStackTrace();
-            } catch (OptionalDataException e) {
-                e.printStackTrace();
-            } catch (StreamCorruptedException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
+            } catch (FileNotFoundException | ClassNotFoundException | StreamCorruptedException | OptionalDataException e) {e.printStackTrace();
+            } catch (IOException e) {e.printStackTrace();
             }
         }
 
@@ -58,35 +50,29 @@ public class GeofenceParser implements Serializable {
         Log.d(TAG,"Initialized!");
     }
 
-    public static GeofenceParser getInstance(){
-        if(isInitialized){
-            return sInstance;
-        }
-        return null;
+    public static GeoFenceParser getInstance(){
+        if(!isInitialized){throw new NullPointerException(TAG + ": has not been initialized");}
+        return sInstance;
     }
 
     public static boolean isIsInitialized(){return isInitialized;}
 
-    private Map<GeoFence,Boolean> geoFences;
+    private List<GeoFence> geoFences;
 
-    public GeofenceParser(){
-        geoFences = new HashMap<>();
+    public GeoFenceParser(){
+        geoFences = new ArrayList<>();
     }
 
-    private GeofenceParser(GeoLocation geoLocation){
-        geoFences = new HashMap<>();
-    }
-
-    public void loadGeoFences(Map<GeoFence,Boolean> geoFences){
-        geoFences.putAll(this.geoFences);
+    public void loadGeoFences(List<GeoFence> geoFences){
+        geoFences.addAll(this.geoFences);
     }
 
     public void removeGeoFence(GeoFence geoFence){
         geoFences.remove(geoFence);
     }
 
-    public void storeGeoFence(GeoFence geoFence,boolean isWithin){
-        geoFences.put(geoFence,isWithin);
+    public void storeGeoFence(GeoFence geoFence){
+        geoFences.add(geoFence);
     }
 
 

@@ -4,8 +4,6 @@ import android.location.Location;
 
 import com.google.android.gms.maps.model.LatLng;
 
-import java.io.Serializable;
-
 public class GeoLocation{
 
     protected LatLng latLng;

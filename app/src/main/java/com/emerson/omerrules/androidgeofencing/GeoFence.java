@@ -15,7 +15,7 @@ public class GeoFence extends GeoLocation implements Serializable{
 
     public static final String TAG = GeoFence.class.getSimpleName();
 
-    private Listener mListener;
+
     private long mRadius;
     private String mName;
 
@@ -32,11 +32,6 @@ public class GeoFence extends GeoLocation implements Serializable{
         this(name,new LatLng(lat,lng),radius);
     }
 
-    private void raiseEvent(){}
-
-    public void setListener(Listener listener){
-        this.mListener = listener;
-    }
 
     public String getName(){return mName;}
 
@@ -44,12 +39,6 @@ public class GeoFence extends GeoLocation implements Serializable{
         return mRadius;
     }
 
-
-    public interface Listener{
-        int EVENT_ENTER = 0;
-        int EVENT_EXIT  = 1;
-        public void eventOccured(int event);
-    }
 
     public boolean isWithin(GeoLocation geoLocation){
         if(geoLocation==null){return true;}

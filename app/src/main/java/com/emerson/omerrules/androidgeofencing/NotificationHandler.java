@@ -3,8 +3,11 @@ package com.emerson.omerrules.androidgeofencing;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
@@ -34,27 +37,36 @@ public class NotificationHandler {
         curID = Integer.MIN_VALUE;
     }
 
-    public void initialize(Context context,String action,GeoFence geoFence){
-        historyStack.push(createMessage(action,geoFence.getName()));
-        Log.d(TAG,action);
-
-        Intent intent = new Intent(context,MapsActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP); //No need to create back stack since there is only 1 activity running at all times.
-        PendingIntent pendingIntent = PendingIntent.getActivity(context,0,intent,PendingIntent.FLAG_UPDATE_CURRENT);
-
-        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context);
-        Notification notification = mBuilder
-                .setContentIntent(pendingIntent)
-                .setContentTitle(action)
-                .setContentText(historyStack.peek())
-                .setSmallIcon(R.drawable.common_google_signin_btn_icon_dark)
-                .setAutoCancel(false)
-                .build();
+    public void initialize(Context context,String message){
+        historyStack.push(message);
 
 
+        Intent notificationIntent = new Intent(context.getApplicationContext(), MapsActivity.class);
 
-        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.notify(getID(),notification);
+
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(context);
+
+        stackBuilder.addParentStack(MapsActivity.class);
+        stackBuilder.addNextIntent(notificationIntent);
+
+        PendingIntent notificationPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
+
+
+        builder.setSmallIcon(R.drawable.common_google_signin_btn_icon_light)
+                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.powered_by_google_dark))
+                .setColor(Color.RED)
+                .setContentTitle(message)
+                .setContentText(context.getString(R.string.geofence_transition_notification_text))
+                .setContentIntent(notificationPendingIntent);
+
+
+        builder.setAutoCancel(true);
+
+
+        NotificationManager mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.notify(getID(), builder.build());
 
     }
 
@@ -62,8 +74,5 @@ public class NotificationHandler {
         return ++curID;
     }
 
-    private String createMessage(String action,String geoFence){
-        return new StringBuilder().append(action).append(" ").append(geoFence).toString();
-    }
 
 }
