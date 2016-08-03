@@ -1,6 +1,5 @@
 package com.emerson.omerrules.androidgeofencing;
 
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -11,8 +10,6 @@ import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.Geofence;
-import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationServices;
 
 import java.util.ArrayList;
@@ -24,10 +21,12 @@ public class RebootListener extends BroadcastReceiver implements GoogleApiClient
 
     private GoogleApiClient mGoogleApiClient;
     private Context mContext;
+    private GeoFenceRegistrer mGeofenceRegistrer;
 
     @Override
     public void onReceive(Context context, Intent intent) {
         mContext = context;
+        mGeofenceRegistrer = new GeoFenceRegistrer(context);
         if(mGoogleApiClient==null){
             mGoogleApiClient = new GoogleApiClient.Builder(context)
                     .addConnectionCallbacks(this)
@@ -35,6 +34,7 @@ public class RebootListener extends BroadcastReceiver implements GoogleApiClient
                     .addApi(LocationServices.API)
                     .build();
         }
+        mGoogleApiClient.connect();
     }
 
     @Override
@@ -44,39 +44,11 @@ public class RebootListener extends BroadcastReceiver implements GoogleApiClient
         List<GeoFence> geoFenceList = new ArrayList<>();
         GeoFenceParser.getInstance().loadGeoFences(geoFenceList);
         Log.d(TAG,"Re-registering GeoFences...");
-        GeofencingRequest request = getGeofencingRequest(convertGeoFences(geoFenceList));
-        LocationServices.GeofencingApi.addGeofences(mGoogleApiClient, request, getGeofencePendingIntent());
+        if(geoFenceList.size()>0){mGeofenceRegistrer.registerGeoFences(mGoogleApiClient,geoFenceList);}
+        NotificationHandler.getInstance().createPhoneRebootNotification(mContext);
     }
 
-    private PendingIntent getGeofencePendingIntent() {
-        Intent intent = new Intent(mContext, GeoFenceTransitionService.class);
-        return PendingIntent.getService(mContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-    }
 
-    private List<Geofence> convertGeoFences(List<GeoFence> geoFences){
-        List<Geofence> googleGeoFences = new ArrayList<>();
-        for(GeoFence geoFence: geoFences){
-            googleGeoFences.add(new Geofence.Builder()
-                    .setRequestId(geoFence.getName())
-                    .setCircularRegion(
-                            geoFence.getLat(),
-                            geoFence.getLon(),
-                            geoFence.getRadius()
-                    )
-                    .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
-                    .build());
-        }
-
-        return googleGeoFences;
-    }
-
-    private GeofencingRequest getGeofencingRequest(List<Geofence> googleFences) {
-        GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
-        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER);
-        builder.addGeofences(googleFences);
-        return builder.build();
-    }
 
     @Override
     public void onConnectionSuspended(int i) {

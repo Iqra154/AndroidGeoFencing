@@ -1,6 +1,5 @@
 package com.emerson.omerrules.androidgeofencing;
 
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -24,9 +23,8 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.Geofence;
-import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -50,6 +48,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private GoogleApiClient mGoogleApiClient;
     private GoogleMap mMap;
+    private GeoFenceRegistrer mGeoFenceRegistrer;
 
 
     private long radiusInput = 0L;
@@ -96,6 +95,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         mGoogleApiClient.connect();
+        mGeoFenceRegistrer = new GeoFenceRegistrer(this);
 
 
     }
@@ -143,13 +143,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMap.setMyLocationEnabled(true);
         }
 
+        if(getIntent().getBundleExtra("data")!=null){
+            Bundle data = getIntent().getBundleExtra("data");
+            double lat = data.getDouble("lat");
+            double lon = data.getDouble("lon");
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lat,lon),12));
+        }
+
         if(!GeoFenceParser.isIsInitialized()){GeoFenceParser.initialize(this);}
             GeoFenceParser.getInstance().loadGeoFences(geoFences);
 
+
+
             Log.d(TAG,"Loading fences from file...");
-            for(GeoFence geoFence: geoFences){
-                addFence(geoFence);
-            }
+            for(GeoFence geoFence: geoFences){putGeoFenceOnMap(geoFence);}
+
             Log.d(TAG,"Fences fully loaded!");
 
     }
@@ -160,6 +168,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     Toast.makeText(context,intent.getStringExtra("message"),Toast.LENGTH_LONG).show();
+                    Bundle data = intent.getBundleExtra("data");
+                    double lat = data.getDouble("lat");
+                    double lon = data.getDouble("lon");
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lat,lon),12));
                }
             };
         }
@@ -192,7 +204,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                  if(!radiusString.getText().toString().equals("") && !nameString.getText().toString().equals("")) {
                      radiusInput = Long.parseLong(radiusString.getText().toString());
                      nameInput = nameString.getText().toString();
-                     addFence(latLng);
+                     createGeoFence(latLng);
                  }
              }
          });
@@ -210,7 +222,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
 
-    private void addFence(GeoFence geofence){
+
+
+    private void createGeoFence(LatLng latLng){
+        if(radiusInput==0L){return;}
+        GeoFence geoFence = new GeoFence(nameInput,latLng,radiusInput);
+
+        GeoFenceParser.getInstance().storeGeoFence(geoFence);
+        geoFences.add(geoFence);
+
+        putGeoFenceOnMap(geoFence);
+
+        mGeoFenceRegistrer.registerGeoFences(mGoogleApiClient,geoFences);
+
+    }
+
+    private void putGeoFenceOnMap(GeoFence geofence){
         Circle circle = mMap.addCircle(new CircleOptions()
                 .center(geofence.getLatLng())
                 .radius(geofence.getRadius())
@@ -224,42 +251,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markerToGeoFenceMap.put(marker,geofence);
     }
 
-    private void addFence(LatLng latLng){
-        if(radiusInput==0L){return;}
-        GeoFence geoFence = new GeoFence(nameInput,latLng,radiusInput);
-
-        Circle circle = mMap.addCircle(new CircleOptions()
-                .center(latLng)
-                .radius(radiusInput)
-                .strokeColor(Color.BLUE)
-                .fillColor(Color.TRANSPARENT));
-
-
-        Marker marker = mMap.addMarker(new MarkerOptions().position(latLng).title(geoFence.getName()));
-
-        markerToCircleMap.put(marker,circle);
-        markerToGeoFenceMap.put(marker,geoFence);
-
-        GeoFenceParser.getInstance().storeGeoFence(geoFence);
-
-        Geofence googleGeofence = new Geofence.Builder()
-                .setRequestId(geoFence.getName())
-                .setCircularRegion(
-                        geoFence.getLat(),
-                        geoFence.getLon(),
-                        geoFence.getRadius()
-                )
-                .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
-                .build();
-
-        List<Geofence> googleGeofences = new ArrayList<>();
-
-        googleGeofences.add(googleGeofence);
-        LocationServices.GeofencingApi.addGeofences(mGoogleApiClient, getGeofencingRequest(googleGeofences), getGeofencePendingIntent());
-
-    }
-
     @Override
     public boolean onMarkerClick(final Marker marker) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -271,6 +262,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 GeoFence geoFence = markerToGeoFenceMap.get(marker);
                 Circle   circle   = markerToCircleMap.get(marker);
                 GeoFenceParser.getInstance().removeGeoFence(geoFence);
+                geoFences.remove(geoFence);
+                if(geoFences.size()>0){mGeoFenceRegistrer.registerGeoFences(mGoogleApiClient,geoFences);}
                 marker.remove();
                 circle.remove();
                 dialog.dismiss();
@@ -291,29 +284,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-
-
-        switch (requestCode) {
-            case PERMISSION_LOCATION_REQUEST_CODE: {
-                // If request is cancelled, the result arrays are empty.
-                if ((grantResults.length > 0) && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    mMap.setMyLocationEnabled(true);
-                    hasPermissions = true;
-                } else {
-
-
-                }
-                return;
-            }
-        }
-    }
+//    @Override
+//    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+//
+//
+//        switch (requestCode) {
+//            case PERMISSION_LOCATION_REQUEST_CODE: {
+//                // If request is cancelled, the result arrays are empty.
+//                if ((grantResults.length > 0) && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+//                    mMap.setMyLocationEnabled(true);
+//                    hasPermissions = true;
+//                } else {
+//
+//
+//                }
+//                return;
+//            }
+//        }
+//    }
 
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-
+        if(geoFences.size()>0){mGeoFenceRegistrer.registerGeoFences(mGoogleApiClient,geoFences);}
     }
 
     @Override
@@ -326,15 +319,4 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
-    private GeofencingRequest getGeofencingRequest(List<Geofence> googleFences) {
-        GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
-        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER);
-        builder.addGeofences(googleFences);
-        return builder.build();
-    }
-
-    private PendingIntent getGeofencePendingIntent() {
-        Intent intent = new Intent(this, GeoFenceTransitionService.class);
-        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-    }
 }
