@@ -25,6 +25,8 @@ public class GeoFenceTransitionService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
+        Log.d(TAG,"Geofence event!");
+
         GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
         if (geofencingEvent.hasError()) {
             Log.d(TAG, "Error with Geofence was detected...");

@@ -131,6 +131,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onDestroy() {
         super.onDestroy();
         if(GeoFenceParser.isIsInitialized()){GeoFenceParser.getInstance().saveState();}
+        mGoogleApiClient.disconnect();
     }
 
     @Override
@@ -138,7 +139,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap = googleMap;
         mMap.setOnMarkerClickListener(this);
         mMap.setOnMapClickListener(this);
-        mMap.setMyLocationEnabled(true);
+
         if(hasPermissions){
             mMap.setMyLocationEnabled(true);
         }
@@ -147,7 +148,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Bundle data = getIntent().getBundleExtra("data");
             double lat = data.getDouble("lat");
             double lon = data.getDouble("lon");
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lat,lon),12));
+            float currentZoom = mMap.getCameraPosition().zoom;
+            if(currentZoom<16f){currentZoom=16f;}
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lat,lon),currentZoom));
         }
 
         if(!GeoFenceParser.isIsInitialized()){GeoFenceParser.initialize(this);}
@@ -171,7 +174,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     Bundle data = intent.getBundleExtra("data");
                     double lat = data.getDouble("lat");
                     double lon = data.getDouble("lon");
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lat,lon),12));
+                    float currentZoom = mMap.getCameraPosition().zoom;
+                    if(currentZoom<16f){currentZoom=16f;}
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lat,lon),currentZoom));
                }
             };
         }
@@ -284,24 +289,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
 
-//    @Override
-//    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-//
-//
-//        switch (requestCode) {
-//            case PERMISSION_LOCATION_REQUEST_CODE: {
-//                // If request is cancelled, the result arrays are empty.
-//                if ((grantResults.length > 0) && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-//                    mMap.setMyLocationEnabled(true);
-//                    hasPermissions = true;
-//                } else {
-//
-//
-//                }
-//                return;
-//            }
-//        }
-//    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+
+
+        switch (requestCode) {
+            case PERMISSION_LOCATION_REQUEST_CODE: {
+                // If request is cancelled, the result arrays are empty.
+                if ((grantResults.length > 0) && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                    mMap.setMyLocationEnabled(true);
+                    hasPermissions = true;
+                } else {
+
+
+                }
+                return;
+            }
+        }
+    }
 
 
     @Override
@@ -311,7 +316,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onConnectionSuspended(int i) {
-        mGoogleApiClient.connect();
+        //mGoogleApiClient.connect();
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.emerson.omerrules.androidgeofencing;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.Geofence;
@@ -13,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GeoFenceRegistrer {
+
+    private static final String TAG = GeoFenceRegistrer.class.getSimpleName();
 
     private static PendingIntent sMostRecentPendingIntent;
     private static int sPendingIntentCode = Integer.MIN_VALUE;
@@ -65,6 +68,7 @@ public class GeoFenceRegistrer {
     public void registerGeoFences(GoogleApiClient googleApiClient,GeofencingRequest geofencingRequest){
         if(sMostRecentPendingIntent!=null){clearAllGeoFences(googleApiClient);}
         LocationServices.GeofencingApi.addGeofences(googleApiClient,geofencingRequest,getGeofencePendingIntent());
+        Log.d(TAG,"Registering Geofences!");
     }
 
     public void registerGeoFences(GoogleApiClient googleApiClient,List<GeoFence> nativeGeoFences){
@@ -72,6 +76,7 @@ public class GeoFenceRegistrer {
         List googleGeofences = convertGeoFences(nativeGeoFences);
         GeofencingRequest request = getGeofencingRequest(googleGeofences);
         LocationServices.GeofencingApi.addGeofences(googleApiClient,request,getGeofencePendingIntent());
+        Log.d(TAG,"Registering Geofences!");
     }
 
 
