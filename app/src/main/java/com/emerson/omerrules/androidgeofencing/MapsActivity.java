@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -16,8 +17,12 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AlertDialog;
 import android.text.InputType;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 
@@ -43,12 +48,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     private static final String TAG = MapsActivity.class.getSimpleName();
-
+    private Intent BACKGROUND_SERVICE;
     private static final int PERMISSION_LOCATION_REQUEST_CODE = 1;
 
     private GoogleApiClient mGoogleApiClient;
     private GoogleMap mMap;
     private GeoFenceRegistrer mGeoFenceRegistrer;
+
+    private LinearLayout mViewStack;
+    private Map<Marker,TextView> mMarkerToTextVeiwMap;
+    private Map<TextView,GeoFence> mViewToGeoFenceMap;
 
 
     private long radiusInput = 0L;
@@ -64,8 +73,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_maps);
+        setContentView(R.layout.sensi_maps_activity);
+        mViewStack = (LinearLayout)findViewById(R.id.view_stack);
 
+
+        BACKGROUND_SERVICE = new Intent(this,GeoFenceBackgroundService.class);
+
+        stopService(BACKGROUND_SERVICE);
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -74,8 +88,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         geoFences = new ArrayList<>();
         markerToCircleMap = new HashMap<>();
         markerToGeoFenceMap = new HashMap<>();
+        mMarkerToTextVeiwMap= new HashMap<>();
+        mViewToGeoFenceMap  = new HashMap<>();
 
-        if(ApplicationManager.getInstance().get().isMarshmallow()) {
             if (!hasLocationPermissions()) {
                 ActivityCompat.requestPermissions(
                         this,
@@ -84,7 +99,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             } else {
                 hasPermissions = true;
             }
-        }
+
 
         if(mGoogleApiClient==null){
             mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -98,6 +113,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mGeoFenceRegistrer = new GeoFenceRegistrer(this);
 
 
+
     }
 
     private boolean hasLocationPermissions() {
@@ -108,10 +124,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onResume() {
         LocalBroadcastManager.getInstance(this).registerReceiver(getLocationListener(), new IntentFilter("geoservices"));
-        if(GeoFenceParser.isIsInitialized()){
-            geoFences.clear();
-            GeoFenceParser.getInstance().loadGeoFences(geoFences);
-        }
+      //  loadGeoFences();
         super.onResume();
     }
 
@@ -132,6 +145,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onDestroy();
         if(GeoFenceParser.isIsInitialized()){GeoFenceParser.getInstance().saveState();}
         mGoogleApiClient.disconnect();
+        stopService(BACKGROUND_SERVICE);
+        startService(BACKGROUND_SERVICE);
     }
 
     @Override
@@ -140,9 +155,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMarkerClickListener(this);
         mMap.setOnMapClickListener(this);
 
-        if(hasPermissions){
-            mMap.setMyLocationEnabled(true);
-        }
+        if(hasPermissions){mMap.setMyLocationEnabled(true);}
 
         if(getIntent().getBundleExtra("data")!=null){
             Bundle data = getIntent().getBundleExtra("data");
@@ -153,13 +166,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lat,lon),currentZoom));
         }
 
-        if(!GeoFenceParser.isIsInitialized()){GeoFenceParser.initialize(this);}
-            GeoFenceParser.getInstance().loadGeoFences(geoFences);
+            loadGeoFences();
 
-
-
-            Log.d(TAG,"Loading fences from file...");
-            for(GeoFence geoFence: geoFences){putGeoFenceOnMap(geoFence);}
 
             Log.d(TAG,"Fences fully loaded!");
 
@@ -238,7 +246,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         putGeoFenceOnMap(geoFence);
 
-        mGeoFenceRegistrer.registerGeoFences(mGoogleApiClient,geoFences);
+        mGeoFenceRegistrer.registerGeoFencesWithService(mGoogleApiClient,geoFences);
 
     }
 
@@ -249,11 +257,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .strokeColor(Color.BLUE)
                 .fillColor(Color.TRANSPARENT));
 
+        TextView fenceText = createGeoFenceTextView(geofence);
 
         Marker marker = mMap.addMarker(new MarkerOptions().position(geofence.getLatLng()).title(geofence.getName()));
 
         markerToCircleMap.put(marker,circle);
         markerToGeoFenceMap.put(marker,geofence);
+        mMarkerToTextVeiwMap.put(marker,fenceText);
+
+        mViewStack.addView(fenceText);
+
     }
 
     @Override
@@ -267,8 +280,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 GeoFence geoFence = markerToGeoFenceMap.get(marker);
                 Circle   circle   = markerToCircleMap.get(marker);
                 GeoFenceParser.getInstance().removeGeoFence(geoFence);
+                mViewStack.removeView(mMarkerToTextVeiwMap.get(marker));
                 geoFences.remove(geoFence);
-                if(geoFences.size()>0){mGeoFenceRegistrer.registerGeoFences(mGoogleApiClient,geoFences);}
+                if(geoFences.size()>0){mGeoFenceRegistrer.registerGeoFencesWithService(mGoogleApiClient,geoFences);}
                 marker.remove();
                 circle.remove();
                 dialog.dismiss();
@@ -311,17 +325,62 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        if(geoFences.size()>0){mGeoFenceRegistrer.registerGeoFences(mGoogleApiClient,geoFences);}
+        if(geoFences.size()>0){mGeoFenceRegistrer.registerGeoFencesWithService(mGoogleApiClient,geoFences);}
     }
 
     @Override
     public void onConnectionSuspended(int i) {
-        //mGoogleApiClient.connect();
+        mGoogleApiClient.connect();
     }
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
     }
+
+    private void loadGeoFences(){
+        if(!GeoFenceParser.isIsInitialized()){GeoFenceParser.initialize(this);}
+        geoFences.clear();
+        mViewStack.removeAllViews();
+        GeoFenceParser.getInstance().loadGeoFences(geoFences);
+        for(GeoFence g:geoFences){
+            putGeoFenceOnMap(g);
+        }
+    }
+
+    private TextView createGeoFenceTextView(GeoFence geoFence){
+        TextView fence = new TextView(this);
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        layoutParams.setMargins(getDp(5),getDp(5),getDp(5),getDp(5));
+        fence.setLayoutParams(layoutParams);
+        fence.setTextSize(TypedValue.COMPLEX_UNIT_SP,20);
+        fence.setTextColor(Color.GREEN);
+        fence.setText(geoFence.getName());
+        fence.setOnClickListener(createGeoFenceTextViewListener());
+        mViewToGeoFenceMap.put(fence,geoFence);
+        return fence;
+    }
+
+    private View.OnClickListener createGeoFenceTextViewListener(){
+        return new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                TextView fenceView = (TextView)v;
+                GeoFence fence = mViewToGeoFenceMap.get(fenceView);
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(fence.getLatLng(),16f));
+            }
+        };
+    }
+
+    private int getDp(int px){
+        Resources r = getResources();
+        int dp = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                px,
+                r.getDisplayMetrics()
+        );
+        return dp;
+    }
+
 
 }

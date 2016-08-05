@@ -26,11 +26,19 @@ public class GeoFenceRegistrer {
         this.mContext = context;
     }
 
-    public PendingIntent getGeofencePendingIntent() {
+    private PendingIntent getServicePendingIntent() {
         Intent intent = new Intent(mContext, GeoFenceTransitionService.class);
         sMostRecentPendingIntent =  PendingIntent.getService(mContext, ++sPendingIntentCode, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         return sMostRecentPendingIntent;
     }
+
+    private PendingIntent getReceiverPendingIntent() {
+        Intent intent = new Intent("com.omer.sensigeofence");
+        sMostRecentPendingIntent =  PendingIntent.getBroadcast(mContext, ++sPendingIntentCode, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return sMostRecentPendingIntent;
+    }
+
+
 
     public List<Geofence> convertGeoFences(List<GeoFence> geoFences){
         List<Geofence> googleGeoFences = new ArrayList<>();
@@ -65,19 +73,22 @@ public class GeoFenceRegistrer {
         LocationServices.GeofencingApi.removeGeofences(googleApiClient,getMostRecentPendingIntent());
     }
 
-    public void registerGeoFences(GoogleApiClient googleApiClient,GeofencingRequest geofencingRequest){
-        if(sMostRecentPendingIntent!=null){clearAllGeoFences(googleApiClient);}
-        LocationServices.GeofencingApi.addGeofences(googleApiClient,geofencingRequest,getGeofencePendingIntent());
-        Log.d(TAG,"Registering Geofences!");
-    }
-
-    public void registerGeoFences(GoogleApiClient googleApiClient,List<GeoFence> nativeGeoFences){
+    public void registerGeoFencesWithService(GoogleApiClient googleApiClient, List<GeoFence> nativeGeoFences){
         if(sMostRecentPendingIntent!=null){clearAllGeoFences(googleApiClient);}
         List googleGeofences = convertGeoFences(nativeGeoFences);
         GeofencingRequest request = getGeofencingRequest(googleGeofences);
-        LocationServices.GeofencingApi.addGeofences(googleApiClient,request,getGeofencePendingIntent());
+        LocationServices.GeofencingApi.addGeofences(googleApiClient,request, getServicePendingIntent());
         Log.d(TAG,"Registering Geofences!");
     }
+
+    public void registerGeoFencesWithReceiver(GoogleApiClient googleApiClient, List<GeoFence> nativeGeoFences){
+        if(sMostRecentPendingIntent!=null){clearAllGeoFences(googleApiClient);}
+        List googleGeofences = convertGeoFences(nativeGeoFences);
+        GeofencingRequest request = getGeofencingRequest(googleGeofences);
+        LocationServices.GeofencingApi.addGeofences(googleApiClient,request, getReceiverPendingIntent());
+        Log.d(TAG,"Registering Geofences!");
+    }
+
 
 
 

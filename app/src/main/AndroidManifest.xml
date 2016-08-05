@@ -46,15 +46,21 @@
             </intent-filter>
         </activity>
 
-        <receiver android:name=".RebootListener"
-            android:enabled="true">
+        <receiver android:name=".RebootListener" android:enabled="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </receiver>
 
-        <service android:name=".GeoFenceTransitionService" />
+        <receiver android:name=".GeoFenceTransitionReceiver" android:enabled="true">
+            <intent-filter>
+                <action android:name="com.omer.sensigeofence"/>
+            </intent-filter>
+        </receiver>
+
+        <service android:name=".GeoFenceBackgroundService" android:enabled="true" android:process=":com.omer.sensigeofence"/>
+        <service android:name=".GeoFenceTransitionService" android:enabled="true"/>
 
     </application>
 

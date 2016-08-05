@@ -1,6 +1,7 @@
 package com.emerson.omerrules.androidgeofencing;
 
 import android.app.IntentService;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -10,7 +11,7 @@ import android.util.Log;
 
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
-import com.google.android.gms.wallet.fragment.WalletFragmentStyle;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +33,6 @@ public class GeoFenceTransitionService extends IntentService {
             Log.d(TAG, "Error with Geofence was detected...");
             return;
         }
-
 
         int geofenceTransition = geofencingEvent.getGeofenceTransition();
 
