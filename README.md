@@ -1,5 +1,5 @@
 # AndroidGeoFencing
-## A geofencing sample app I created , does not use Google's built-in Geofencing API.
+## A geofencing sample app I created ,it does use Google's built-in Geofencing API.
 
 #Features:
 ## Geofences persist outside application's state
