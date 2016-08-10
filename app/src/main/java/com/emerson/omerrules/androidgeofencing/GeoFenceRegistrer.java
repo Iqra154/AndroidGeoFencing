@@ -60,7 +60,7 @@ public class GeoFenceRegistrer {
 
     public GeofencingRequest getGeofencingRequest(List<Geofence> googleFences) {
         GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
-        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER);
+        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_DWELL);
         builder.addGeofences(googleFences);
         return builder.build();
     }

@@ -24,23 +24,23 @@ import java.io.StreamCorruptedException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GeoFenceParser implements Serializable,Parcelable {
+public class GeofenceParser implements Serializable,Parcelable {
 
     private static final long serialVersionUID = -2518143671167959330L;
 
-    public static final String TAG = GeoFenceParser.class.getSimpleName();
+    public static final String TAG = GeofenceParser.class.getSimpleName();
 
     private static String storagePath;
-    private static String name = GeoFenceParser.class.getSimpleName();
+    private static String name = GeofenceParser.class.getSimpleName();
 
-    private static GeoFenceParser sInstance;
+    private static GeofenceParser sInstance;
 
     private static boolean isInitialized = false;
 
 
 
     public static void initialize(Context context){
-        sInstance = new GeoFenceParser();
+        sInstance = new GeofenceParser();
         storagePath = context.getFilesDir().getAbsolutePath();
         File file = new File(storagePath,name);
         if(file.exists()){
@@ -48,7 +48,7 @@ public class GeoFenceParser implements Serializable,Parcelable {
             try {
                 fin = new FileInputStream(file);
                 ObjectInputStream ois = new ObjectInputStream(fin);
-                sInstance = (GeoFenceParser) ois.readObject();
+                sInstance = (GeofenceParser) ois.readObject();
 
             } catch (FileNotFoundException | ClassNotFoundException | StreamCorruptedException | OptionalDataException e) {e.printStackTrace();
             } catch (IOException e) {e.printStackTrace();
@@ -59,12 +59,12 @@ public class GeoFenceParser implements Serializable,Parcelable {
         Log.d(TAG,"Initialized!");
     }
 
-    public static void initialize(Context context,GeoFenceParser parser){
+    public static void initialize(Context context,GeofenceParser parser){
         sInstance = parser;
         storagePath = context.getFilesDir().getAbsolutePath();
     }
 
-    public static GeoFenceParser getInstance(){
+    public static GeofenceParser getInstance(){
         if(!isInitialized){throw new NullPointerException(TAG + ": has not been initialized");}
         return sInstance;
     }
@@ -75,7 +75,7 @@ public class GeoFenceParser implements Serializable,Parcelable {
 
     private boolean hasUpdates;
 
-    private GeoFenceParser(){
+    private GeofenceParser(){
         geoFences = new ArrayList<>();
         hasUpdates = false;
     }
@@ -117,8 +117,8 @@ public class GeoFenceParser implements Serializable,Parcelable {
         }
     }
 
-    public static GeoFenceParser createFromJSON(JSONObject jsonObject){
-        return new Gson().fromJson(jsonObject.toString(),GeoFenceParser.class);
+    public static GeofenceParser createFromJSON(JSONObject jsonObject){
+        return new Gson().fromJson(jsonObject.toString(),GeofenceParser.class);
     }
 
     @Override
@@ -134,7 +134,7 @@ public class GeoFenceParser implements Serializable,Parcelable {
         }
     }
 
-    public GeoFenceParser(Parcel in) {
+    public GeofenceParser(Parcel in) {
         geoFences = new ArrayList<>();
         int size = in.readInt();
         for(int i = 0; i<size;i++){
@@ -144,15 +144,15 @@ public class GeoFenceParser implements Serializable,Parcelable {
         hasUpdates = false;
     }
 
-    public static final Creator<GeoFenceParser> CREATOR = new Creator<GeoFenceParser>() {
+    public static final Creator<GeofenceParser> CREATOR = new Creator<GeofenceParser>() {
         @Override
-        public GeoFenceParser createFromParcel(Parcel in) {
-            return new GeoFenceParser(in);
+        public GeofenceParser createFromParcel(Parcel in) {
+            return new GeofenceParser(in);
         }
 
         @Override
-        public GeoFenceParser[] newArray(int size) {
-            return new GeoFenceParser[size];
+        public GeofenceParser[] newArray(int size) {
+            return new GeofenceParser[size];
         }
     };
 }

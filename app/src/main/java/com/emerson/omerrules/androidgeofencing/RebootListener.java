@@ -3,7 +3,6 @@ package com.emerson.omerrules.androidgeofencing;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Parcelable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,8 +20,8 @@ public class RebootListener extends BroadcastReceiver{
         mContext = context;
         mGeofenceRegistrer = new GeoFenceRegistrer(context);
         mGeoFences         = new ArrayList<>();
-        GeoFenceParser.initialize(mContext);
-        GeoFenceParser.getInstance().loadGeoFences(mGeoFences);
+        GeofenceParser.initialize(mContext);
+        GeofenceParser.getInstance().loadGeoFences(mGeoFences);
         Intent serviceIntent = new Intent(mContext,GeoFenceBackgroundService.class);
         mContext.startService(serviceIntent);
         NotificationHandler.getInstance().createPhoneRebootNotification(mContext);

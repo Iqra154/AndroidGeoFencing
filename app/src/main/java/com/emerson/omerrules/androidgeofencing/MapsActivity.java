@@ -19,7 +19,6 @@ import android.text.InputType;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -137,13 +136,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onStop() {
         super.onStop();
-        if(GeoFenceParser.isIsInitialized()){GeoFenceParser.getInstance().saveState();}
+        if(GeofenceParser.isIsInitialized()){
+            GeofenceParser.getInstance().saveState();}
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if(GeoFenceParser.isIsInitialized()){GeoFenceParser.getInstance().saveState();}
+        if(GeofenceParser.isIsInitialized()){
+            GeofenceParser.getInstance().saveState();}
         mGoogleApiClient.disconnect();
         stopService(BACKGROUND_SERVICE);
         startService(BACKGROUND_SERVICE);
@@ -241,7 +242,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if(radiusInput==0L){return;}
         GeoFence geoFence = new GeoFence(nameInput,latLng,radiusInput);
 
-        GeoFenceParser.getInstance().storeGeoFence(geoFence);
+        GeofenceParser.getInstance().storeGeoFence(geoFence);
         geoFences.add(geoFence);
 
         putGeoFenceOnMap(geoFence);
@@ -279,7 +280,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onClick(DialogInterface dialog, int which) {
                 GeoFence geoFence = markerToGeoFenceMap.get(marker);
                 Circle   circle   = markerToCircleMap.get(marker);
-                GeoFenceParser.getInstance().removeGeoFence(geoFence);
+                GeofenceParser.getInstance().removeGeoFence(geoFence);
                 mViewStack.removeView(mMarkerToTextVeiwMap.get(marker));
                 geoFences.remove(geoFence);
                 if(geoFences.size()>0){mGeoFenceRegistrer.registerGeoFencesWithService(mGoogleApiClient,geoFences);}
@@ -339,10 +340,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void loadGeoFences(){
-        if(!GeoFenceParser.isIsInitialized()){GeoFenceParser.initialize(this);}
+        if(!GeofenceParser.isIsInitialized()){
+            GeofenceParser.initialize(this);}
         geoFences.clear();
         mViewStack.removeAllViews();
-        GeoFenceParser.getInstance().loadGeoFences(geoFences);
+        GeofenceParser.getInstance().loadGeoFences(geoFences);
         for(GeoFence g:geoFences){
             putGeoFenceOnMap(g);
         }
